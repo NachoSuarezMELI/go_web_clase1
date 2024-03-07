@@ -1,21 +1,18 @@
-package controllers
+package product
 
 import (
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strconv"
-	"web/clase1/models"
-	"web/clase1/services"
-	"web/clase1/web"
-
-	"github.com/go-chi/chi/v5"
+	"web/clase1/internal/web"
 )
 
 type ProductHandler struct {
-	storage map[int]*models.Product
+	storage map[int]*Product
 }
 
-func NewProductHandler(products []models.Product) *ProductHandler {
-	storage := make(map[int]*models.Product)
+func NewProductHandler(products []Product) *ProductHandler {
+	storage := make(map[int]*Product)
 	for _, product := range products {
 		storage[product.Id] = &product
 	}
@@ -24,16 +21,16 @@ func NewProductHandler(products []models.Product) *ProductHandler {
 	}
 }
 
+// GetAllProducts returns all the products in the storage
 func (h *ProductHandler) GetAllProducts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if len(h.storage) == 0 {
 			web.ResponseJson(w, map[string]any{"message": "No products found"}, http.StatusNotFound)
 			return
 		}
+		products := GetProducts(h.storage)
 
-		products := services.GetProducts(h.storage)
-
-		body := models.ResponseProducts{
+		body := ResponseProducts{
 			Message: "Products found",
 			Data:    products,
 		}
@@ -42,6 +39,7 @@ func (h *ProductHandler) GetAllProducts() http.HandlerFunc {
 	}
 }
 
+// GetProductById returns a product by id
 func (h *ProductHandler) GetProductById() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
@@ -50,20 +48,21 @@ func (h *ProductHandler) GetProductById() http.HandlerFunc {
 			web.ResponseJson(w, map[string]any{"message": err.Error()}, http.StatusInternalServerError)
 			return
 		}
-		product := services.FindProductById(idInt, h.storage)
-		if product == nil {
+		p := FindProductById(idInt, h.storage)
+		if p == nil {
 			web.ResponseJson(w, map[string]any{"message": "Product not found"}, http.StatusNotFound)
 			return
 		}
 
-		body := models.ResponseProduct{
+		body := ResponseProduct{
 			Message: "Product found",
-			Data:    *product,
+			Data:    *p,
 		}
 		web.ResponseJson(w, body, http.StatusOK)
 	}
 }
 
+// GetProductsByPriceGt returns a list of products with a price greater than the one specified in the query
 func (h *ProductHandler) GetProductsByPriceGt() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		priceGt := r.URL.Query().Get("priceGt")
@@ -74,13 +73,13 @@ func (h *ProductHandler) GetProductsByPriceGt() http.HandlerFunc {
 			return
 		}
 
-		products := services.FindProductsByPriceGt(priceGtFloat, h.storage)
+		products := FindProductsByPriceGt(priceGtFloat, h.storage)
 		if len(products) == 0 {
 			web.ResponseJson(w, map[string]any{"message": "No products found"}, http.StatusNotFound)
 			return
 		}
 
-		body := models.ResponseProducts{
+		body := ResponseProducts{
 			Message: "Products found",
 			Data:    products,
 		}
@@ -89,21 +88,22 @@ func (h *ProductHandler) GetProductsByPriceGt() http.HandlerFunc {
 	}
 }
 
+// CreateProduct creates a new product
 func (h *ProductHandler) CreateProduct() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var Requestbody models.RequestBodyProduct
+		var Requestbody RequestBodyProduct
 		err := web.RequestJsonProduct(r, &Requestbody)
 		if err != nil {
 			web.ResponseJson(w, map[string]any{"message": err.Error()}, http.StatusBadRequest)
 			return
 		}
 
-		p, err := services.CreateProduct(len(h.storage)+1, Requestbody, h.storage)
+		p, err := CreateProduct(len(h.storage)+1, Requestbody, h.storage)
 		if err != nil {
 			web.ResponseJson(w, map[string]any{"message": err.Error()}, http.StatusBadRequest)
 			return
 		}
-		Responsebody := models.ResponseProduct{
+		Responsebody := ResponseProduct{
 			Message: "Product created",
 			Data:    *p,
 		}

@@ -1,24 +1,25 @@
 package main
 
 import (
-	"github.com/go-chi/chi/v5"
 	"net/http"
-	"web/clase1/handlers"
-	"web/clase1/services"
+	"web/clase1/internal/product"
+	"web/clase1/internal/utils"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func main() {
 
-	bytes, err := services.ReadFile("products.json")
+	bytes, err := utils.ReadFile("../docs/db/products.json")
 	if err != nil {
 		println(err.Error())
 	}
-	products, err := services.JsonHandler(bytes)
+	products, err := product.JsonHandler(bytes)
 	if err != nil {
 		println(err.Error())
 	}
 
-	ph := controllers.NewProductHandler(products)
+	ph := product.NewProductHandler(products)
 
 	r := chi.NewRouter()
 

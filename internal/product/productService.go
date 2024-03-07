@@ -1,31 +1,36 @@
-package services
+package product
 
 import (
 	"encoding/json"
 	"errors"
-	"reflect"
 	"time"
-	"web/clase1/models"
 )
 
-func JsonHandler(data []byte) ([]models.Product, error) {
-	var products []models.Product
+func JsonHandler(data []byte) ([]Product, error) {
+	var products []Product
 	if err := json.Unmarshal(data, &products); err != nil {
 		return nil, err
 	}
 	return products, nil
 }
 
-func GetProducts(st map[int]*models.Product) []models.Product {
-	products := make([]models.Product, 0, len(st))
+func GetProducts(st map[int]*Product) []Product {
+	products := make([]Product, 0, len(st))
 	for _, product := range st {
 		products = append(products, *product)
 	}
 	return products
 }
 
-func FindProductsByPriceGt(price float64, products map[int]*models.Product) []models.Product {
-	var productsFound []models.Product
+func FindProductById(id int, products map[int]*Product) *Product {
+	product, ok := products[id]
+	if !ok {
+		return nil
+	}
+	return product
+}
+func FindProductsByPriceGt(price float64, products map[int]*Product) []Product {
+	var productsFound []Product
 	for _, product := range products {
 		if product.Price > price {
 			productsFound = append(productsFound, *product)
@@ -34,24 +39,12 @@ func FindProductsByPriceGt(price float64, products map[int]*models.Product) []mo
 	return productsFound
 }
 
-func FindProductById(id int, products map[int]*models.Product) *models.Product {
-	product, ok := products[id]
-	if !ok {
-		return nil
-	}
-	return product
-}
-
-func CreateProduct(id int, body models.RequestBodyProduct, products map[int]*models.Product) (*models.Product, error) {
+func CreateProduct(id int, body RequestBodyProduct, products map[int]*Product) (*Product, error) {
 	_, err := ValidateProductFields(body)
 	if err != nil {
 		return nil, err
 	}
 	_, err = ValidateProductCodeValue(body.CodeValue, products)
-	if err != nil {
-		return nil, err
-	}
-	_, err = ValidateAllTheTypes(body)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +54,7 @@ func CreateProduct(id int, body models.RequestBodyProduct, products map[int]*mod
 		return nil, err
 	}
 
-	product := models.Product{
+	product := Product{
 		Id:           id,
 		Name:         body.Name,
 		Quantity:     body.Quantity,
@@ -74,7 +67,7 @@ func CreateProduct(id int, body models.RequestBodyProduct, products map[int]*mod
 	return &product, nil
 }
 
-func ValidateProductFields(p models.RequestBodyProduct) (bool, error) {
+func ValidateProductFields(p RequestBodyProduct) (bool, error) {
 	if p.Name == "" {
 		return false, errors.New("invalid product, name is required")
 	}
@@ -93,40 +86,11 @@ func ValidateProductFields(p models.RequestBodyProduct) (bool, error) {
 	return true, nil
 }
 
-func ValidateProductCodeValue(codeValue string, products map[int]*models.Product) (bool, error) {
+func ValidateProductCodeValue(codeValue string, products map[int]*Product) (bool, error) {
 	for _, product := range products {
 		if product.CodeValue == codeValue {
 			return false, errors.New("invalid product, code value already exists")
 		}
-	}
-	return true, nil
-}
-
-func ValidateType(value interface{}, typeValue string) (bool, error) {
-	if reflect.TypeOf(value).String() != typeValue {
-		return false, errors.New("invalid type")
-	}
-	return true, nil
-}
-
-func ValidateAllTheTypes(values models.RequestBodyProduct) (bool, error) {
-	if _, err := ValidateType(values.Name, "string"); err != nil {
-		return false, errors.New("invalid type")
-	}
-	if _, err := ValidateType(values.Quantity, "int"); err != nil {
-		return false, errors.New("invalid type")
-	}
-	if _, err := ValidateType(values.CodeValue, "string"); err != nil {
-		return false, errors.New("invalid type")
-	}
-	if _, err := ValidateType(values.Is_Published, "bool"); err != nil {
-		return false, errors.New("invalid type")
-	}
-	if _, err := ValidateType(values.Expiration, "string"); err != nil {
-		return false, errors.New("invalid type")
-	}
-	if _, err := ValidateType(values.Price, "float64"); err != nil {
-		return false, errors.New("invalid type")
 	}
 	return true, nil
 }
