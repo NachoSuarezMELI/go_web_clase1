@@ -132,18 +132,12 @@ func ValidateExpirationDate(expiration string) (bool, error) {
 	if expiration[2] != '/' || expiration[5] != '/' {
 		return false, errors.New("invalid expiration format")
 	}
-	date, _ := time.Parse("02/01/2006", expiration)
+	date, err := time.Parse("02/01/2006", expiration)
+	if err != nil {
+		return false, errors.New(err.Error())
+	}
 	if date.Before(time.Now()) {
 		return false, errors.New("The expiration date must be greater than the current date")
-	}
-	if date.Year() < 2021 {
-		return false, errors.New("The expiration date must be greater than 2021")
-	}
-	if date.Day() < 1 || date.Day() > 31 {
-		return false, errors.New("The day must be between 1 and 31")
-	}
-	if date.Month() < 1 || date.Month() > 12 {
-		return false, errors.New("The month must be between 1 and 12")
 	}
 	return true, nil
 }

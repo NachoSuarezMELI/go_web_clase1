@@ -2,12 +2,11 @@ package controllers
 
 import (
 	"encoding/json"
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strconv"
 	"web/clase1/models"
 	"web/clase1/services"
-
-	"github.com/go-chi/chi/v5"
 )
 
 type ProductHandler struct {
