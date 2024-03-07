@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/go-chi/chi/v5"
 	"net/http"
-	"web/clase1/controllers"
+	"web/clase1/handlers"
 	"web/clase1/services"
 )
 

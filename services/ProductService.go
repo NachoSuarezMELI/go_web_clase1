@@ -74,15 +74,21 @@ func CreateProduct(id int, body models.RequestBodyProduct, products map[int]*mod
 	return &product, nil
 }
 
-func ValidateProductFields(product models.RequestBodyProduct) (bool, error) {
-	if product.Name == "" || product.Quantity == 0 || product.CodeValue == "" || product.Expiration == "" || product.Price == 0 {
-		return false, errors.New("invalid product, some fields are empty")
+func ValidateProductFields(p models.RequestBodyProduct) (bool, error) {
+	if p.Name == "" {
+		return false, errors.New("invalid product, name is required")
 	}
-	if product.Price < 0 {
-		return false, errors.New("invalid product, price must be greater than zero")
+	if p.Quantity == 0 {
+		return false, errors.New("invalid product, quantity is required")
 	}
-	if product.Quantity < 0 {
-		return false, errors.New("invalid product, quantity must be greater than zero")
+	if p.CodeValue == "" {
+		return false, errors.New("invalid product, code value is required")
+	}
+	if p.Price == 0 {
+		return false, errors.New("invalid product, price is required")
+	}
+	if p.Expiration == "" {
+		return false, errors.New("invalid product, expiration is required")
 	}
 	return true, nil
 }

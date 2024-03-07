@@ -1,12 +1,13 @@
 package controllers
 
 import (
-	"encoding/json"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strconv"
 	"web/clase1/models"
 	"web/clase1/services"
+	"web/clase1/web"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type ProductHandler struct {
@@ -26,7 +27,7 @@ func NewProductHandler(products []models.Product) *ProductHandler {
 func (h *ProductHandler) GetAllProducts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if len(h.storage) == 0 {
-			http.Error(w, "No products found", http.StatusNotFound)
+			web.ResponseJson(w, map[string]any{"message": "No products found"}, http.StatusNotFound)
 			return
 		}
 
@@ -36,9 +37,8 @@ func (h *ProductHandler) GetAllProducts() http.HandlerFunc {
 			Message: "Products found",
 			Data:    products,
 		}
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(body)
+
+		web.ResponseJson(w, body, http.StatusOK)
 	}
 }
 
@@ -47,12 +47,12 @@ func (h *ProductHandler) GetProductById() http.HandlerFunc {
 		id := chi.URLParam(r, "id")
 		idInt, err := strconv.Atoi(id)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			web.ResponseJson(w, map[string]any{"message": err.Error()}, http.StatusInternalServerError)
 			return
 		}
 		product := services.FindProductById(idInt, h.storage)
 		if product == nil {
-			http.Error(w, "Product not found", http.StatusNotFound)
+			web.ResponseJson(w, map[string]any{"message": "Product not found"}, http.StatusNotFound)
 			return
 		}
 
@@ -60,9 +60,7 @@ func (h *ProductHandler) GetProductById() http.HandlerFunc {
 			Message: "Product found",
 			Data:    *product,
 		}
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(body)
+		web.ResponseJson(w, body, http.StatusOK)
 	}
 }
 
@@ -70,14 +68,15 @@ func (h *ProductHandler) GetProductsByPriceGt() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		priceGt := r.URL.Query().Get("priceGt")
 		priceGtFloat, err := strconv.ParseFloat(priceGt, 64)
+
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			web.ResponseJson(w, map[string]any{"message": err.Error()}, http.StatusInternalServerError)
 			return
 		}
 
 		products := services.FindProductsByPriceGt(priceGtFloat, h.storage)
 		if len(products) == 0 {
-			http.Error(w, "No products found", http.StatusNotFound)
+			web.ResponseJson(w, map[string]any{"message": "No products found"}, http.StatusNotFound)
 			return
 		}
 
@@ -85,23 +84,23 @@ func (h *ProductHandler) GetProductsByPriceGt() http.HandlerFunc {
 			Message: "Products found",
 			Data:    products,
 		}
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(body)
+
+		web.ResponseJson(w, body, http.StatusOK)
 	}
 }
 
 func (h *ProductHandler) CreateProduct() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body models.RequestBodyProduct
-		err := json.NewDecoder(r.Body).Decode(&body)
+		var Requestbody models.RequestBodyProduct
+		err := web.RequestJsonProduct(r, &Requestbody)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			web.ResponseJson(w, map[string]any{"message": err.Error()}, http.StatusBadRequest)
 			return
 		}
-		p, err := services.CreateProduct(len(h.storage)+1, body, h.storage)
+
+		p, err := services.CreateProduct(len(h.storage)+1, Requestbody, h.storage)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			web.ResponseJson(w, map[string]any{"message": err.Error()}, http.StatusBadRequest)
 			return
 		}
 		Responsebody := models.ResponseProduct{
@@ -109,8 +108,6 @@ func (h *ProductHandler) CreateProduct() http.HandlerFunc {
 			Data:    *p,
 		}
 
-		w.WriteHeader(http.StatusCreated)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(Responsebody)
+		web.ResponseJson(w, Responsebody, http.StatusCreated)
 	}
 }
