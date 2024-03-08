@@ -34,3 +34,21 @@ type ResponseBodyProduct struct {
 	Data    Product `json:"data"`
 	Error   bool    `json:"error"`
 }
+
+type ProductRepository interface {
+	GetAllProducts() ([]Product, error)
+	GetProductById(id int) (*Product, error)
+	CreateProduct(p *Product) error
+	FindProductsByPriceGt(price float64) []Product
+	UpdateOrCreateProduct(p *RequestBodyProduct, id int) error
+	//UpdateSomeAtributes(map[string]string) error
+}
+
+type ProductService interface {
+	GetAllProducts() ([]Product, error)
+	GetProductById(id int) (*Product, error)
+	CreateProduct(p *Product) (err error)
+	FindProductsByPriceGt(price float64) []Product
+	UpdateOrCreateProduct(p *RequestBodyProduct, id int) error
+	//UpdateSomeAtributes(map[string]string) error
+}

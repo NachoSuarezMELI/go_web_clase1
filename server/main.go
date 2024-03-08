@@ -22,12 +22,9 @@ func main() {
 
 	router.Get("/products", h.GetAllProducts())
 	router.Get("/products/{id}", h.GetProductById())
-
-	// Esta ruta no funciona ################################################################################################
-	router.Post("/products", h.CreateProduct())
-	// ######################################################################################################################
-
 	router.Get("/products/search", h.GetProductsByPriceGt())
+	router.Post("/products", h.CreateProduct())
+	router.Put("/products/{id}", h.UpdateOrCreateProduct())
 
 	if err := http.ListenAndServe(":8080", router); err != nil {
 		panic(err)

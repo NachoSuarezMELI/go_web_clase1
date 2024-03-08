@@ -2,24 +2,23 @@ package service
 
 import (
 	"web/clase1/internal"
-	"web/clase1/internal/repository"
 )
 
-type ProductService struct {
-	repository *repository.ProductRepository
+type Service struct {
+	repository product.ProductRepository
 }
 
-func NewProductService(repository *repository.ProductRepository) *ProductService {
-	return &ProductService{
+func NewProductService(repository product.ProductRepository) *Service {
+	return &Service{
 		repository: repository,
 	}
 }
 
-func (s *ProductService) GetAllProducts() []product.Product {
+func (s *Service) GetAllProducts() ([]product.Product, error) {
 	return s.repository.GetAllProducts()
 }
 
-func (s *ProductService) GetProductById(id int) (*product.Product, error) {
+func (s *Service) GetProductById(id int) (*product.Product, error) {
 	p, err := s.repository.GetProductById(id)
 	if err != nil {
 		return nil, err
@@ -27,10 +26,14 @@ func (s *ProductService) GetProductById(id int) (*product.Product, error) {
 	return p, nil
 }
 
-func (s *ProductService) CreateProduct(product *product.Product) (err error) {
+func (s *Service) FindProductsByPriceGt(price float64) []product.Product {
+	return s.repository.FindProductsByPriceGt(price)
+}
+
+func (s *Service) CreateProduct(product *product.Product) (err error) {
 	return s.repository.CreateProduct(product)
 }
 
-func (s *ProductService) FindProductsByPriceGt(price float64) []product.Product {
-	return s.repository.FindProductsByPriceGt(price)
+func (s *Service) UpdateOrCreateProduct(product *product.RequestBodyProduct, id int) error {
+	return s.repository.UpdateOrCreateProduct(product, id)
 }
