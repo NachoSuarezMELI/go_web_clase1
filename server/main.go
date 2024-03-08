@@ -25,6 +25,8 @@ func main() {
 	router.Get("/products/search", h.GetProductsByPriceGt())
 	router.Post("/products", h.CreateProduct())
 	router.Put("/products/{id}", h.UpdateOrCreateProduct())
+	router.Patch("/products/{id}", h.UpdatePartial())
+	router.Delete("/products/{id}", h.DeleteProduct())
 
 	if err := http.ListenAndServe(":8080", router); err != nil {
 		panic(err)

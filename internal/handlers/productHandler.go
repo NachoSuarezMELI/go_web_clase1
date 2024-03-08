@@ -3,13 +3,15 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"github.com/bootcamp-go/web/response"
-	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 	"strconv"
-	product "web/clase1/internal"
+	"web/clase1/internal"
 	"web/clase1/platform/tools"
+
+	"github.com/bootcamp-go/web/request"
+	"github.com/bootcamp-go/web/response"
+	"github.com/go-chi/chi/v5"
 )
 
 type Handler struct {
@@ -165,5 +167,58 @@ func (h *Handler) UpdateOrCreateProduct() http.HandlerFunc {
 		}
 
 		response.JSON(w, http.StatusNoContent, map[string]any{"message": "Product updated"})
+	}
+}
+
+// UpdatePartial updates a product partially
+func (h *Handler) UpdatePartial() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(chi.URLParam(r, "id"))
+		if err != nil {
+			response.Text(w, http.StatusBadRequest, "invalid id")
+			return
+		}
+
+		bodyMap := make(map[string]any)
+		if err := request.JSON(r, &bodyMap); err != nil {
+			response.Text(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+
+		if err := h.Service.UpdatePartial(bodyMap, id); err != nil {
+			switch {
+			case errors.Is(err, product.ErrProdNotFound):
+				response.Text(w, http.StatusNotFound, "product not found")
+			case errors.Is(err, product.ErrProdInvalidField):
+				response.Text(w, http.StatusBadRequest, "invalid field")
+			default:
+				response.Text(w, http.StatusInternalServerError, "internal server error")
+
+			}
+		}
+		response.Text(w, http.StatusNoContent, "product updated")
+	}
+}
+
+func (h *Handler) DeleteProduct() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(chi.URLParam(r, "id"))
+		if err != nil {
+			response.Text(w, http.StatusBadRequest, "invalid id")
+			return
+		}
+
+		if err := h.Service.DeleteProduct(id); err != nil {
+			switch {
+			case errors.Is(err, product.ErrProdNotFound):
+				response.Text(w, http.StatusNotFound, "product not found")
+			case errors.Is(err, product.ErrProdInvalidField):
+				response.Text(w, http.StatusBadRequest, "invalid field")
+			default:
+				response.Text(w, http.StatusInternalServerError, "internal server error")
+			}
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

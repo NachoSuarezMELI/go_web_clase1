@@ -37,3 +37,11 @@ func (s *Service) CreateProduct(product *product.Product) (err error) {
 func (s *Service) UpdateOrCreateProduct(product *product.RequestBodyProduct, id int) error {
 	return s.repository.UpdateOrCreateProduct(product, id)
 }
+
+func (s *Service) UpdatePartial(product map[string]any, id int) error {
+	return s.repository.UpdatePartial(product, id)
+}
+
+func (s *Service) DeleteProduct(id int) error {
+	return s.repository.DeleteProduct(id)
+}

@@ -1,5 +1,12 @@
 package product
 
+import "errors"
+
+var (
+	ErrProdNotFound     = errors.New("product not found")
+	ErrProdInvalidField = errors.New("product is invalid")
+)
+
 type Product struct {
 	Id           int     `json:"id"`
 	Name         string  `json:"name"`
@@ -41,7 +48,8 @@ type ProductRepository interface {
 	CreateProduct(p *Product) error
 	FindProductsByPriceGt(price float64) []Product
 	UpdateOrCreateProduct(p *RequestBodyProduct, id int) error
-	//UpdateSomeAtributes(map[string]string) error
+	UpdatePartial(map[string]any, int) error
+	DeleteProduct(id int) error
 }
 
 type ProductService interface {
@@ -50,5 +58,6 @@ type ProductService interface {
 	CreateProduct(p *Product) (err error)
 	FindProductsByPriceGt(price float64) []Product
 	UpdateOrCreateProduct(p *RequestBodyProduct, id int) error
-	//UpdateSomeAtributes(map[string]string) error
+	UpdatePartial(map[string]any, int) error
+	DeleteProduct(id int) error
 }

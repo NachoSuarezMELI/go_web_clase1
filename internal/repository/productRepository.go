@@ -9,7 +9,6 @@ import (
 
 type ProductSlice struct {
 	storage []product.Product
-	lastId  int
 }
 
 func NewProductRepository(data []product.Product, lastId int) *ProductSlice {
@@ -19,7 +18,6 @@ func NewProductRepository(data []product.Product, lastId int) *ProductSlice {
 
 	return &ProductSlice{
 		storage: data,
-		lastId:  lastId,
 	}
 }
 
@@ -51,8 +49,7 @@ func (r *ProductSlice) FindProductsByPriceGt(price float64) []product.Product {
 }
 
 func (r *ProductSlice) CreateProduct(p *product.Product) (err error) {
-	r.lastId++
-	p.Id = r.lastId
+	p.Id = len(r.storage) + 1
 	r.storage = append(r.storage, *p)
 	return nil
 }
@@ -60,9 +57,8 @@ func (r *ProductSlice) CreateProduct(p *product.Product) (err error) {
 func (r *ProductSlice) UpdateOrCreateProduct(p *product.RequestBodyProduct, id int) error {
 	_, err := r.GetProductById(id)
 	if err != nil {
-		r.lastId++
 		newProduct := product.Product{
-			Id:           r.lastId,
+			Id:           len(r.storage) + 1,
 			Name:         p.Name,
 			Quantity:     p.Quantity,
 			CodeValue:    p.CodeValue,
@@ -84,9 +80,45 @@ func (r *ProductSlice) UpdateOrCreateProduct(p *product.RequestBodyProduct, id i
 	return nil
 }
 
-// // UpdateSomeAtributes updates some atributes of a product
+// UpdatePartial updates a product by id
+func (r *ProductSlice) UpdatePartial(p map[string]interface{}, id int) error {
+	product, err := r.GetProductById(id)
+	if err != nil {
+		return err
+	}
+	for key, value := range p {
+		switch key {
+		case "name":
+			product.Name = value.(string)
+		case "quantity":
+			product.Quantity = value.(int)
+		case "code_value":
+			product.CodeValue = value.(string)
+		case "is_published":
+			product.Is_Published = value.(bool)
+		case "expiration":
+			product.Expiration = value.(string)
+		case "price":
+			product.Price = value.(float64)
+		default:
+			return errors.New("invalid field")
+		}
+	}
+	r.storage[(id - 1)] = *product
+	return nil
+}
 
-// // TODO: implement this method
+func (r *ProductSlice) DeleteProduct(id int) error {
+	_, err := r.GetProductById(id)
+	if err != nil {
+		return product.ErrProdNotFound
+	}
+
+	// Delete product
+	r.storage = append(r.storage[:id-1], r.storage[id:]...)
+	return nil
+
+}
 
 // GeneretaDB generates the database from a json file
 func (r *ProductSlice) GeneretaDB() error {
@@ -98,6 +130,5 @@ func (r *ProductSlice) GeneretaDB() error {
 	if err := json.Unmarshal(bytes, &r.storage); err != nil {
 		return err
 	}
-	r.lastId = len(r.storage)
 	return nil
 }
