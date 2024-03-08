@@ -1,32 +1,35 @@
 package main
 
 import (
-	"net/http"
-	"web/clase1/internal/product"
-	"web/clase1/internal/utils"
-
 	"github.com/go-chi/chi/v5"
+	"net/http"
+	"web/clase1/internal/handlers"
+	"web/clase1/internal/repository"
+	"web/clase1/internal/service"
 )
 
 func main() {
 
-	bytes, err := utils.ReadFile("../docs/db/products.json")
-	if err != nil {
-		println(err.Error())
+	rp := repository.NewProductRepository(nil, 0)
+	sv := service.NewProductService(rp)
+	h := handlers.NewProductHandler(sv)
+
+	if err := rp.GeneretaDB(); err != nil {
+		panic(err)
 	}
-	products, err := product.JsonHandler(bytes)
-	if err != nil {
-		println(err.Error())
+
+	router := chi.NewRouter()
+
+	router.Get("/products", h.GetAllProducts())
+	router.Get("/products/{id}", h.GetProductById())
+
+	// Esta ruta no funciona ################################################################################################
+	router.Post("/products", h.CreateProduct())
+	// ######################################################################################################################
+
+	router.Get("/products/search", h.GetProductsByPriceGt())
+
+	if err := http.ListenAndServe(":8080", router); err != nil {
+		panic(err)
 	}
-
-	ph := product.NewProductHandler(products)
-
-	r := chi.NewRouter()
-
-	r.Get("/products", ph.GetAllProducts())
-	r.Get("/products/{id}", ph.GetProductById())
-	r.Get("/products/search", ph.GetProductsByPriceGt())
-	r.Post("/products", ph.CreateProduct())
-
-	http.ListenAndServe(":8080", r)
 }
