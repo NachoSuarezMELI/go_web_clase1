@@ -4,32 +4,42 @@ import (
 	"encoding/json"
 	"errors"
 	"web/clase1/internal"
-	"web/clase1/platform/tools"
+	"web/clase1/internal/storage"
 )
 
 type ProductSlice struct {
-	storage []product.Product
+	slice   []product.Product
+	storage storage.Storage
 }
 
-func NewProductRepository(data []product.Product, lastId int) *ProductSlice {
-	if data == nil {
-		data = make([]product.Product, 0)
+func NewProductRepository(st storage.Storage) *ProductSlice {
+	data, err := st.Read()
+	if err != nil {
+		return nil
+	}
+
+	//convert data to slice of products
+	var products []product.Product
+	err = json.Unmarshal(data, &products)
+	if err != nil {
+		return nil
 	}
 
 	return &ProductSlice{
-		storage: data,
+		slice:   products,
+		storage: st,
 	}
 }
 
 func (r *ProductSlice) GetAllProducts() ([]product.Product, error) {
-	if len(r.storage) == 0 {
+	if len(r.slice) == 0 {
 		return nil, errors.New("no products found")
 	}
-	return r.storage, nil
+	return r.slice, nil
 }
 
 func (r *ProductSlice) GetProductById(id int) (*product.Product, error) {
-	for _, product := range r.storage {
+	for _, product := range r.slice {
 		if product.Id == id {
 			return &product, nil
 		}
@@ -40,7 +50,7 @@ func (r *ProductSlice) GetProductById(id int) (*product.Product, error) {
 
 func (r *ProductSlice) FindProductsByPriceGt(price float64) []product.Product {
 	var productsFound []product.Product
-	for _, product := range r.storage {
+	for _, product := range r.slice {
 		if product.Price > price {
 			productsFound = append(productsFound, product)
 		}
@@ -49,8 +59,19 @@ func (r *ProductSlice) FindProductsByPriceGt(price float64) []product.Product {
 }
 
 func (r *ProductSlice) CreateProduct(p *product.Product) (err error) {
-	p.Id = len(r.storage) + 1
-	r.storage = append(r.storage, *p)
+	p.Id = len(r.slice) + 1
+	r.slice = append(r.slice, *p)
+
+	//save slice to storage
+	data, err := json.Marshal(r.slice)
+	if err != nil {
+		return err
+	}
+	err = r.storage.Write(data)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -58,7 +79,7 @@ func (r *ProductSlice) UpdateOrCreateProduct(p *product.RequestBodyProduct, id i
 	_, err := r.GetProductById(id)
 	if err != nil {
 		newProduct := product.Product{
-			Id:           len(r.storage) + 1,
+			Id:           len(r.slice) + 1,
 			Name:         p.Name,
 			Quantity:     p.Quantity,
 			CodeValue:    p.CodeValue,
@@ -66,16 +87,26 @@ func (r *ProductSlice) UpdateOrCreateProduct(p *product.RequestBodyProduct, id i
 			Expiration:   p.Expiration,
 			Price:        p.Price,
 		}
-		r.storage = append(r.storage, *&newProduct)
+		r.slice = append(r.slice, *&newProduct)
 	} else {
-		product := r.storage[(id - 1)]
+		product := r.slice[(id - 1)]
 		product.Name = p.Name
 		product.Quantity = p.Quantity
 		product.CodeValue = p.CodeValue
 		product.Is_Published = p.Is_Published
 		product.Expiration = p.Expiration
 		product.Price = p.Price
-		r.storage[(id - 1)] = product
+		r.slice[(id - 1)] = product
+	}
+
+	//save slice to storage
+	data, err := json.Marshal(r.slice)
+	if err != nil {
+		return err
+	}
+	err = r.storage.Write(data)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -104,7 +135,17 @@ func (r *ProductSlice) UpdatePartial(p map[string]interface{}, id int) error {
 			return errors.New("invalid field")
 		}
 	}
-	r.storage[(id - 1)] = *product
+	r.slice[(id - 1)] = *product
+
+	//save slice to storage
+	data, err := json.Marshal(r.slice)
+	if err != nil {
+		return err
+	}
+	err = r.storage.Write(data)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -115,20 +156,22 @@ func (r *ProductSlice) DeleteProduct(id int) error {
 	}
 
 	// Delete product
-	r.storage = append(r.storage[:id-1], r.storage[id:]...)
-	return nil
+	for i, product := range r.slice {
+		if product.Id == id {
+			r.slice = append(r.slice[:i], r.slice[i+1:]...)
+			break
+		}
+	}
 
-}
-
-// GeneretaDB generates the database from a json file
-func (r *ProductSlice) GeneretaDB() error {
-	bytes, err := tools.ReadFile("../docs/db/products.json")
+	// Save slice to storage
+	data, err := json.Marshal(r.slice)
 	if err != nil {
 		return err
 	}
-
-	if err := json.Unmarshal(bytes, &r.storage); err != nil {
+	err = r.storage.Write(data)
+	if err != nil {
 		return err
 	}
 	return nil
+
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"web/clase1/internal"
 	"web/clase1/platform/tools"
@@ -84,6 +85,12 @@ func (h *Handler) GetProductsByPriceGt() http.HandlerFunc {
 // CreateProduct creates a new product
 func (h *Handler) CreateProduct() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Check for the token
+		if r.Header.Get("Authorization") != os.Getenv("TOKEN") {
+			response.JSON(w, http.StatusUnauthorized, map[string]any{"message": "Unauthorized"})
+			return
+		}
+
 		bytes, err := io.ReadAll(r.Body)
 		if err != nil {
 			response.JSON(w, http.StatusBadRequest, map[string]any{"message": err.Error()})
@@ -125,6 +132,12 @@ func (h *Handler) CreateProduct() http.HandlerFunc {
 // UpdateOrCreateProduct updates a product or creates it if it doesn't exist
 func (h *Handler) UpdateOrCreateProduct() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Check for the token
+		if r.Header.Get("Authorization") != os.Getenv("TOKEN") {
+			response.JSON(w, http.StatusUnauthorized, map[string]any{"message": "Unauthorized"})
+			return
+		}
+
 		id := chi.URLParam(r, "id")
 		idInt, err := strconv.Atoi(id)
 		if err != nil {
@@ -173,6 +186,12 @@ func (h *Handler) UpdateOrCreateProduct() http.HandlerFunc {
 // UpdatePartial updates a product partially
 func (h *Handler) UpdatePartial() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Check for the token
+		if r.Header.Get("Authorization") != os.Getenv("TOKEN") {
+			response.JSON(w, http.StatusUnauthorized, map[string]any{"message": "Unauthorized"})
+			return
+		}
+
 		id, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
 			response.Text(w, http.StatusBadRequest, "invalid id")
@@ -200,8 +219,15 @@ func (h *Handler) UpdatePartial() http.HandlerFunc {
 	}
 }
 
+// DeleteProduct deletes a product
 func (h *Handler) DeleteProduct() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Check for the token
+		if r.Header.Get("Authorization") != os.Getenv("TOKEN") {
+			response.JSON(w, http.StatusUnauthorized, map[string]any{"message": "Unauthorized"})
+			return
+		}
+
 		id, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
 			response.Text(w, http.StatusBadRequest, "invalid id")

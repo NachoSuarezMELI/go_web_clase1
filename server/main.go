@@ -1,22 +1,23 @@
 package main
 
 import (
-	"github.com/go-chi/chi/v5"
 	"net/http"
+	"os"
 	"web/clase1/internal/handlers"
 	"web/clase1/internal/repository"
 	"web/clase1/internal/service"
+	"web/clase1/internal/storage"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func main() {
+	os.Setenv("TOKEN", "12345")
 
-	rp := repository.NewProductRepository(nil, 0)
+	st := storage.NewStorageJSON("../docs/db/products.json")
+	rp := repository.NewProductRepository(st)
 	sv := service.NewProductService(rp)
 	h := handlers.NewProductHandler(sv)
-
-	if err := rp.GeneretaDB(); err != nil {
-		panic(err)
-	}
 
 	router := chi.NewRouter()
 
