@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"web/clase1/internal"
+	"web/clase1/internal/web"
 	"web/clase1/platform/tools"
 
 	"github.com/bootcamp-go/web/request"
@@ -30,11 +31,17 @@ func (h *Handler) GetAllProducts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		products, err := h.Service.GetAllProducts()
 		if err != nil {
-			response.JSON(w, http.StatusNotFound, map[string]any{"message": "Products not found"})
+			body := web.StandarResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    err.Error(),
+			}
+			response.JSON(w, http.StatusNotFound, body)
 		}
-		body := product.ResponseProducts{
-			Message: "Products found",
-			Data:    products,
+
+		body := web.StandarResponse{
+			StatusCode: http.StatusOK,
+			Message:    "Products found",
+			Data:       products,
 		}
 		response.JSON(w, http.StatusOK, body)
 	}
@@ -46,18 +53,36 @@ func (h *Handler) GetProductById() http.HandlerFunc {
 		id := chi.URLParam(r, "id")
 		idInt, err := strconv.Atoi(id)
 		if err != nil {
-			response.JSON(w, http.StatusInternalServerError, map[string]any{"message": err.Error()})
+			body := web.StandarResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    err.Error(),
+			}
+			response.JSON(w, http.StatusInternalServerError, body)
 			return
 		}
 
 		p, err := h.Service.GetProductById(idInt)
 		if err != nil {
-			response.JSON(w, http.StatusNotFound, map[string]any{"message": "Product not found"})
-			return
+			if errors.Is(err, product.ErrProdNotFound) {
+				body := web.StandarResponse{
+					StatusCode: http.StatusNotFound,
+					Message:    err.Error(),
+				}
+				response.JSON(w, http.StatusNotFound, body)
+				return
+			} else {
+				body := web.StandarResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    err.Error(),
+				}
+				response.JSON(w, http.StatusInternalServerError, body)
+				return
+			}
 		}
-		body := product.ResponseProduct{
-			Message: "Product found",
-			Data:    *p,
+		body := web.StandarResponse{
+			StatusCode: http.StatusOK,
+			Message:    "Product found",
+			Data:       p,
 		}
 		response.JSON(w, http.StatusOK, body)
 	}
@@ -74,9 +99,10 @@ func (h *Handler) GetProductsByPriceGt() http.HandlerFunc {
 		}
 
 		products := h.Service.FindProductsByPriceGt(priceFloat)
-		body := product.ResponseProducts{
-			Message: "Products found",
-			Data:    products,
+		body := web.StandarResponse{
+			StatusCode: http.StatusOK,
+			Message:    "Products found",
+			Data:       products,
 		}
 		response.JSON(w, http.StatusOK, body)
 	}
@@ -87,45 +113,78 @@ func (h *Handler) CreateProduct() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check for the token
 		if r.Header.Get("Authorization") != os.Getenv("TOKEN") {
-			response.JSON(w, http.StatusUnauthorized, map[string]any{"message": "Unauthorized"})
+			body := web.StandarResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "Unauthorized",
+			}
+			response.JSON(w, http.StatusUnauthorized, body)
 			return
 		}
 
 		bytes, err := io.ReadAll(r.Body)
 		if err != nil {
-			response.JSON(w, http.StatusBadRequest, map[string]any{"message": err.Error()})
+			body := web.StandarResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
 		bodyMap := make(map[string]any)
 		if err := json.Unmarshal(bytes, &bodyMap); err != nil {
-			response.JSON(w, http.StatusBadRequest, map[string]any{"message": err.Error()})
+			body := web.StandarResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
 		if err := tools.CheckFieldExistance(bodyMap, "name", "quantity", "code_value", "is_published", "expiration", "price"); err != nil {
 			var fieldError *tools.FieldError
 			if errors.As(err, &fieldError) {
-				response.JSON(w, http.StatusBadRequest, map[string]any{"message": err.Error()})
+				body := web.StandarResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    err.Error(),
+				}
+				response.JSON(w, http.StatusBadRequest, body)
 				return
 			}
 
-			response.JSON(w, http.StatusBadRequest, map[string]any{"message": err.Error()})
+			body := web.StandarResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
-		var body product.Product
-		if err := json.Unmarshal(bytes, &body); err != nil {
-			response.JSON(w, http.StatusBadRequest, map[string]any{"message": err.Error()})
+		var p product.Product
+		if err := json.Unmarshal(bytes, &p); err != nil {
+			body := web.StandarResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
-		if err = h.Service.CreateProduct(&body); err != nil {
-			response.JSON(w, http.StatusBadRequest, map[string]any{"message": err.Error()})
+		if err = h.Service.CreateProduct(&p); err != nil {
+			body := web.StandarResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
-		response.JSON(w, http.StatusCreated, map[string]any{"message": "Product created"})
+		body := web.StandarResponse{
+			StatusCode: http.StatusCreated,
+			Message:    "Product created",
+			Data:       p,
+		}
+		response.JSON(w, http.StatusCreated, body)
 	}
 }
 
@@ -134,52 +193,93 @@ func (h *Handler) UpdateOrCreateProduct() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check for the token
 		if r.Header.Get("Authorization") != os.Getenv("TOKEN") {
-			response.JSON(w, http.StatusUnauthorized, map[string]any{"message": "Unauthorized"})
+			body := web.StandarResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "Unauthorized",
+			}
+			response.JSON(w, http.StatusUnauthorized, body)
 			return
 		}
 
 		id := chi.URLParam(r, "id")
 		idInt, err := strconv.Atoi(id)
 		if err != nil {
-			response.JSON(w, http.StatusInternalServerError, map[string]any{"message": err.Error()})
+			body := web.StandarResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    err.Error(),
+			}
+			response.JSON(w, http.StatusInternalServerError, body)
 			return
 		}
 
 		bytes, err := io.ReadAll(r.Body)
 		if err != nil {
-			response.JSON(w, http.StatusBadRequest, map[string]any{"message": err.Error()})
+			body := web.StandarResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
 		bodyMap := make(map[string]any)
 		if err := json.Unmarshal(bytes, &bodyMap); err != nil {
-			response.JSON(w, http.StatusBadRequest, map[string]any{"message": err.Error()})
+			body := web.StandarResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
 		if err := tools.CheckFieldExistance(bodyMap, "name", "quantity", "code_value", "is_published", "expiration", "price"); err != nil {
 			var fieldError *tools.FieldError
 			if errors.As(err, &fieldError) {
-				response.JSON(w, http.StatusBadRequest, map[string]any{"message": err.Error()})
+				body := web.StandarResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    err.Error(),
+				}
+				response.JSON(w, http.StatusBadRequest, body)
 				return
 			}
 
-			response.JSON(w, http.StatusBadRequest, map[string]any{"message": err.Error()})
+			body := web.StandarResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
+
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
-		var body product.RequestBodyProduct
-		if err := json.Unmarshal(bytes, &body); err != nil {
-			response.JSON(w, http.StatusBadRequest, map[string]any{"message": err.Error()})
+		var p product.RequestBodyProduct
+		if err := json.Unmarshal(bytes, &p); err != nil {
+			body := web.StandarResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
-		if err = h.Service.UpdateOrCreateProduct(&body, idInt); err != nil {
-			response.JSON(w, http.StatusBadRequest, map[string]any{"message": err.Error()})
+		if err = h.Service.UpdateOrCreateProduct(&p, idInt); err != nil {
+			body := web.StandarResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
-		response.JSON(w, http.StatusNoContent, map[string]any{"message": "Product updated"})
+		product, _ := h.Service.GetProductById(idInt)
+
+		body := web.StandarResponse{
+			StatusCode: http.StatusNoContent,
+			Message:    "Product updated",
+			Data:       product,
+		}
+
+		response.JSON(w, http.StatusNoContent, body)
 	}
 }
 
@@ -188,34 +288,61 @@ func (h *Handler) UpdatePartial() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check for the token
 		if r.Header.Get("Authorization") != os.Getenv("TOKEN") {
-			response.JSON(w, http.StatusUnauthorized, map[string]any{"message": "Unauthorized"})
+			body := web.StandarResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "Unauthorized",
+			}
+			response.JSON(w, http.StatusUnauthorized, body)
 			return
 		}
 
 		id, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
-			response.Text(w, http.StatusBadRequest, "invalid id")
+			body := web.StandarResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    "invalid id",
+			}
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
 		bodyMap := make(map[string]any)
 		if err := request.JSON(r, &bodyMap); err != nil {
-			response.Text(w, http.StatusBadRequest, "invalid request body")
+			body := web.StandarResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    "invalid request body",
+			}
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
 		if err := h.Service.UpdatePartial(bodyMap, id); err != nil {
 			switch {
 			case errors.Is(err, product.ErrProdNotFound):
-				response.Text(w, http.StatusNotFound, "product not found")
+				body := web.StandarResponse{
+					StatusCode: http.StatusNotFound,
+					Message:    "product not found",
+				}
+				response.JSON(w, http.StatusNotFound, body)
 			case errors.Is(err, product.ErrProdInvalidField):
-				response.Text(w, http.StatusBadRequest, "invalid field")
+				body := web.StandarResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    err.Error(),
+				}
+				response.JSON(w, http.StatusBadRequest, body)
 			default:
-				response.Text(w, http.StatusInternalServerError, "internal server error")
-
+				body := web.StandarResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    "internal server error",
+				}
+				response.JSON(w, http.StatusInternalServerError, body)
 			}
 		}
-		response.Text(w, http.StatusNoContent, "product updated")
+		body := web.StandarResponse{
+			StatusCode: http.StatusNoContent,
+			Message:    "product updated",
+		}
+		response.JSON(w, http.StatusNoContent, body)
 	}
 }
 
@@ -224,27 +351,53 @@ func (h *Handler) DeleteProduct() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check for the token
 		if r.Header.Get("Authorization") != os.Getenv("TOKEN") {
-			response.JSON(w, http.StatusUnauthorized, map[string]any{"message": "Unauthorized"})
+			body := web.StandarResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "Unauthorized",
+			}
+			response.JSON(w, http.StatusUnauthorized, body)
 			return
 		}
 
 		id, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
-			response.Text(w, http.StatusBadRequest, "invalid id")
+			body := web.StandarResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    "invalid id",
+			}
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
 		if err := h.Service.DeleteProduct(id); err != nil {
 			switch {
 			case errors.Is(err, product.ErrProdNotFound):
-				response.Text(w, http.StatusNotFound, "product not found")
+				body := web.StandarResponse{
+					StatusCode: http.StatusNotFound,
+					Message:    "product not found",
+				}
+				response.JSON(w, http.StatusNotFound, body)
 			case errors.Is(err, product.ErrProdInvalidField):
-				response.Text(w, http.StatusBadRequest, "invalid field")
+				body := web.StandarResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    err.Error(),
+				}
+				response.JSON(w, http.StatusBadRequest, body)
 			default:
-				response.Text(w, http.StatusInternalServerError, "internal server error")
+				body := web.StandarResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    "internal server error",
+				}
+				response.JSON(w, http.StatusInternalServerError, body)
 			}
 			return
 		}
-		w.WriteHeader(http.StatusNoContent)
+
+		body := web.StandarResponse{
+			StatusCode: http.StatusNoContent,
+			Message:    "product deleted",
+		}
+
+		response.JSON(w, http.StatusNoContent, body)
 	}
 }

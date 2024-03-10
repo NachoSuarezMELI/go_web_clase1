@@ -17,15 +17,15 @@ type Product struct {
 	Price        float64 `json:"price"`
 }
 
-type ResponseProducts struct {
-	Message string    `json:"message"`
-	Data    []Product `json:"data"`
-}
+// type ResponseProducts struct {
+// 	Message string    `json:"message"`
+// 	Data    []Product `json:"data"`
+// }
 
-type ResponseProduct struct {
-	Message string  `json:"message"`
-	Data    Product `json:"data"`
-}
+// type ResponseProduct struct {
+// 	Message string  `json:"message"`
+// 	Data    Product `json:"data"`
+// }
 
 type RequestBodyProduct struct {
 	Name         string  `json:"name"`
@@ -36,11 +36,11 @@ type RequestBodyProduct struct {
 	Price        float64 `json:"price"`
 }
 
-type ResponseBodyProduct struct {
-	Message string  `json:"message"`
-	Data    Product `json:"data"`
-	Error   bool    `json:"error"`
-}
+// type ResponseBodyProduct struct {
+// 	Message string  `json:"message"`
+// 	Data    Product `json:"data"`
+// 	Error   bool    `json:"error"`
+// }
 
 type ProductRepository interface {
 	GetAllProducts() ([]Product, error)
