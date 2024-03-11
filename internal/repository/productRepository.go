@@ -44,7 +44,7 @@ func (r *ProductSlice) GetProductById(id int) (*product.Product, error) {
 			return &product, nil
 		}
 	}
-	return nil, errors.New("product not found")
+	return nil, product.ErrProdNotFound
 
 }
 
@@ -59,6 +59,7 @@ func (r *ProductSlice) FindProductsByPriceGt(price float64) []product.Product {
 }
 
 func (r *ProductSlice) CreateProduct(p *product.Product) (err error) {
+
 	p.Id = len(r.slice) + 1
 	r.slice = append(r.slice, *p)
 

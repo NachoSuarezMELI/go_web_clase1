@@ -3,11 +3,12 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strconv"
-	"web/clase1/internal"
+	product "web/clase1/internal"
 	"web/clase1/internal/web"
 	"web/clase1/platform/tools"
 
@@ -50,14 +51,23 @@ func (h *Handler) GetAllProducts() http.HandlerFunc {
 // GetProductById returns a product by id
 func (h *Handler) GetProductById() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Check for the token
+		if r.Header.Get("Authorization") != os.Getenv("TOKEN") {
+			body := web.StandarResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "Unauthorized",
+			}
+			response.JSON(w, http.StatusUnauthorized, body)
+			return
+		}
 		id := chi.URLParam(r, "id")
 		idInt, err := strconv.Atoi(id)
 		if err != nil {
 			body := web.StandarResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    err.Error(),
+				StatusCode: http.StatusBadRequest,
+				Message:    "Bad request",
 			}
-			response.JSON(w, http.StatusInternalServerError, body)
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
@@ -205,10 +215,10 @@ func (h *Handler) UpdateOrCreateProduct() http.HandlerFunc {
 		idInt, err := strconv.Atoi(id)
 		if err != nil {
 			body := web.StandarResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    err.Error(),
+				StatusCode: http.StatusBadRequest,
+				Message:    "invalid id",
 			}
-			response.JSON(w, http.StatusInternalServerError, body)
+			response.JSON(w, http.StatusBadRequest, body)
 			return
 		}
 
@@ -399,5 +409,116 @@ func (h *Handler) DeleteProduct() http.HandlerFunc {
 		}
 
 		response.JSON(w, http.StatusNoContent, body)
+	}
+}
+
+// GetConsumerPrice returns the consumer price of a list of products
+// TODO: fix update quantity--
+func (h *Handler) GetConsumerPrice() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Check for the token
+		if r.Header.Get("Authorization") != os.Getenv("TOKEN") {
+			body := web.StandarResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "Unauthorized",
+			}
+			response.JSON(w, http.StatusUnauthorized, body)
+			return
+		}
+
+		strIds := r.URL.Query()["list"]
+		var ids []int
+
+		err := json.Unmarshal([]byte(strIds[0]), &ids)
+		if err != nil {
+			body := web.StandarResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    "invalid id",
+			}
+			response.JSON(w, http.StatusBadRequest, body)
+			return
+		}
+
+		var price float64
+
+		if len(ids) == 0 {
+			products, err := h.Service.GetAllProducts()
+			if err != nil {
+				body := web.StandarResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    "internal server error",
+				}
+				response.JSON(w, http.StatusInternalServerError, body)
+				return
+			} else {
+				for _, product := range products {
+					if product.Quantity > 0 && product.Is_Published {
+						price += product.Price
+						product.Quantity--
+					} else {
+						body := web.StandarResponse{
+							StatusCode: http.StatusBadRequest,
+							Message:    "product not available",
+						}
+						response.JSON(w, http.StatusBadRequest, body)
+						return
+					}
+					price = price * 1.15
+					body := web.StandarResponse{
+						StatusCode: http.StatusOK,
+						Message:    "consumer price",
+						Data:       fmt.Sprintf("%.2f", price),
+					}
+					response.JSON(w, http.StatusOK, body)
+					return
+				}
+			}
+		}
+
+		// Fix product quantity --
+		// Using GetProductById method doesn't update the quantity of the product
+		// Fix it using the UpdatePartial method?
+
+		for _, id := range ids {
+			product, err := h.Service.GetProductById(id)
+			if err != nil {
+				body := web.StandarResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    "internal server error",
+				}
+				response.JSON(w, http.StatusInternalServerError, body)
+				return
+			} else {
+				if product.Quantity > 0 && product.Is_Published {
+					price += product.Price
+
+					//
+					product.Quantity--
+					//
+				} else {
+					body := web.StandarResponse{
+						StatusCode: http.StatusBadRequest,
+						Message:    "product not available",
+					}
+					response.JSON(w, http.StatusBadRequest, body)
+					return
+				}
+			}
+			price += product.Price
+		}
+		switch {
+		case len(ids) < 10:
+			price = price * 1.21
+		case len(ids) >= 10 && len(ids) < 20:
+			price = price * 1.17
+		case len(ids) >= 20:
+			price = price * 1.15
+		}
+		body := web.StandarResponse{
+			StatusCode: http.StatusOK,
+			Message:    "consumer price",
+			Data:       fmt.Sprintf("%.2f", price),
+		}
+		response.JSON(w, http.StatusOK, body)
 	}
 }

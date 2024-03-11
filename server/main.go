@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	os.Setenv("TOKEN", "12345")
+	os.Setenv("TOKEN", "123456")
 
 	st := storage.NewStorageJSON("../docs/db/products.json")
 	rp := repository.NewProductRepository(st)
@@ -28,6 +28,7 @@ func main() {
 	router.Put("/products/{id}", h.UpdateOrCreateProduct())
 	router.Patch("/products/{id}", h.UpdatePartial())
 	router.Delete("/products/{id}", h.DeleteProduct())
+	router.Get("/products/consumer_price", h.GetConsumerPrice())
 
 	if err := http.ListenAndServe(":8080", router); err != nil {
 		panic(err)
